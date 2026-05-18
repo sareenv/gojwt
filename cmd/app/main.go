@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/sareenv/gojwt/database"
+	"github.com/sareenv/gojwt/internal/database"
 )
 
 func main() {
