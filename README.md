@@ -41,3 +41,6 @@ Set the following environment variables before running the application:
 DATABASE_URL=postgres://user:pass@host:5432/dbname
 JWT_SECRET=your-secret-key
 PORT=8080
+```
+## NOTE
+This project saves the .env file because of conveience and I am lazy to set it up on my various machines where I code and doesn't contain the sensitive information and is only linked to the docker-compse creds for learning, but be careful to not expose this information if this is opted for any serious or production use.
