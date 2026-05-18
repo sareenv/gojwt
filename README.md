@@ -21,6 +21,18 @@ User credentials and session-related data are stored in PostgreSQL using the [`p
 - Go 1.20+
 - PostgreSQL
 
+## Documentation
+
+The project uses standard Go docstrings. You can view the documentation locally using the `go doc` command:
+
+```bash
+# View all documentation for the Manager package
+go doc -all ./Manager/
+
+# View documentation for the JWTManager
+go doc manager.JWTManager
+```
+
 ## Configuration
 
 Set the following environment variables before running the application:
