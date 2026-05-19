@@ -1,5 +1,5 @@
 # JWT Authentication in Go
-<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/5a74df41-47ee-4cb8-94b5-5a6c646bef33" />
+<img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/5a74df41-47ee-4cb8-94b5-5a6c646bef33" />
 
 A minimal JWT authentication implementation in Go using PostgreSQL and `pgx`.
 
