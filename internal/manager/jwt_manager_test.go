@@ -130,4 +130,24 @@ func TestJWTManager(t *testing.T) {
 		assert.Nil(t, newPair)
 		assert.Contains(t, err.Error(), "absolute limit reached")
 	})
+
+	t.Run("TokenTypeCheck", func(t *testing.T) {
+		accessToken, err := jwtManager.GenerateToken(userID)
+		require.NoError(t, err)
+
+		refreshToken, err := jwtManager.GenerateRefreshToken(t.Context(), userID)
+		require.NoError(t, err)
+
+		// Try to validate AccessToken as RefreshToken
+		valid, err := jwtManager.ValidateRefreshToken(accessToken, userID)
+		assert.Error(t, err)
+		assert.False(t, valid)
+		assert.Contains(t, err.Error(), "invalid token type")
+
+		// Try to validate RefreshToken as AccessToken
+		claims, err := jwtManager.ValidateAccessToken(refreshToken)
+		assert.Error(t, err)
+		assert.Nil(t, claims)
+		assert.Contains(t, err.Error(), "invalid token type")
+	})
 }
