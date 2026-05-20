@@ -15,7 +15,7 @@ func TestJWTManager(t *testing.T) {
 		RefreshTokenDuration: time.Hour * 1,
 		MaxSessionDuration:   time.Hour * 24,
 	}
-	jwtManager := NewJWTManager(config)
+	jwtManager := NewJWTManager(config, nil)
 
 	userID := "test-user-123"
 
@@ -30,7 +30,7 @@ func TestJWTManager(t *testing.T) {
 	})
 
 	t.Run("GenerateAndValidateRefreshToken", func(t *testing.T) {
-		token, err := jwtManager.GenerateRefreshToken(userID)
+		token, err := jwtManager.GenerateRefreshToken(t.Context(), userID)
 		require.NoError(t, err)
 		require.NotEmpty(t, token)
 
@@ -40,14 +40,14 @@ func TestJWTManager(t *testing.T) {
 	})
 
 	t.Run("RefreshToken", func(t *testing.T) {
-		refreshToken, err := jwtManager.GenerateRefreshToken(userID)
+		refreshToken, err := jwtManager.GenerateRefreshToken(t.Context(), userID)
 		require.NoError(t, err)
 
 		pair := TokenPair{
 			RefreshToken: refreshToken,
 		}
 
-		newPair, err := jwtManager.RefreshToken(pair, userID)
+		newPair, err := jwtManager.RefreshToken(t.Context(), pair, userID)
 		require.NoError(t, err)
 		assert.NotEmpty(t, newPair.AccessToken)
 		assert.NotEmpty(t, newPair.RefreshToken)
@@ -69,7 +69,7 @@ func TestJWTManager(t *testing.T) {
 			AccessTokenDuration:  -time.Second, // Already expired
 			RefreshTokenDuration: time.Hour,
 		}
-		shortManager := NewJWTManager(shortConfig)
+		shortManager := NewJWTManager(shortConfig, nil)
 
 		token, err := shortManager.GenerateToken(userID)
 		require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestJWTManager(t *testing.T) {
 			AccessTokenDuration:  time.Minute,
 			RefreshTokenDuration: time.Hour,
 		}
-		wrongManager := NewJWTManager(wrongConfig)
+		wrongManager := NewJWTManager(wrongConfig, nil)
 
 		claims, err := wrongManager.ValidateAccessToken(token)
 		assert.Error(t, err)
@@ -96,7 +96,7 @@ func TestJWTManager(t *testing.T) {
 	})
 
 	t.Run("InvalidUserIDInRefresh", func(t *testing.T) {
-		refreshToken, err := jwtManager.GenerateRefreshToken(userID)
+		refreshToken, err := jwtManager.GenerateRefreshToken(t.Context(), userID)
 		require.NoError(t, err)
 
 		valid, err := jwtManager.ValidateRefreshToken(refreshToken, "wrong-user")
@@ -112,9 +112,9 @@ func TestJWTManager(t *testing.T) {
 			RefreshTokenDuration: time.Hour,
 			MaxSessionDuration:   -time.Second, // Already expired absolute session
 		}
-		absManager := NewJWTManager(absConfig)
+		absManager := NewJWTManager(absConfig, nil)
 
-		refreshToken, err := absManager.GenerateRefreshToken(userID)
+		refreshToken, err := absManager.GenerateRefreshToken(t.Context(), userID)
 		require.NoError(t, err)
 
 		// ValidateRefreshToken should fail
@@ -125,7 +125,7 @@ func TestJWTManager(t *testing.T) {
 
 		// RefreshToken should fail
 		pair := TokenPair{RefreshToken: refreshToken}
-		newPair, err := absManager.RefreshToken(pair, userID)
+		newPair, err := absManager.RefreshToken(t.Context(), pair, userID)
 		assert.Error(t, err)
 		assert.Nil(t, newPair)
 		assert.Contains(t, err.Error(), "absolute limit reached")

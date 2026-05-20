@@ -1,0 +1,3 @@
+{"time":"2026-05-19T22:44:05.38879-04:00","level":"INFO","msg":"Database configuration loaded","config":{"Host":"localhost","Port":5432,"User":"pguser","Password":"pgpassword","DBName":"pgappdb"}}
+{"time":"2026-05-19T22:44:05.391035-04:00","level":"INFO","msg":"connected to database"}
+{"time":"2026-05-19T22:44:05.391392-04:00","level":"ERROR","msg":"failed to run server","error":"listen tcp :8080: bind: address already in use"}

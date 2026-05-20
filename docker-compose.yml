@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: jwt-postgres
     restart: unless-stopped
     env_file:
@@ -17,7 +17,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8080:80"
+      - "8081:80"
     depends_on:
       - postgres
 

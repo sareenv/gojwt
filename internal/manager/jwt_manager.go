@@ -3,6 +3,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -13,6 +14,13 @@ import (
 type TokenPair struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
+}
+
+// RefreshTokenRepository defines the interface for persisting refresh tokens.
+type RefreshTokenRepository interface {
+	UpsertToken(ctx context.Context, userID string, token string, expiresAt time.Time) error
+	GetToken(ctx context.Context, userID string) (string, error)
+	DeleteToken(ctx context.Context, userID string) error
 }
 
 // JWTClaims extends standard JWT registered claims with custom fields like UserID
@@ -26,13 +34,15 @@ type JWTClaims struct {
 
 // JWTManager handles the creation, validation, and refreshing of JWT tokens.
 type JWTManager struct {
-	Config *JWTConfig
+	Config     *JWTConfig
+	Repository RefreshTokenRepository
 }
 
-// NewJWTManager creates a new instance of JWTManager with the provided configuration.
-func NewJWTManager(config *JWTConfig) *JWTManager {
+// NewJWTManager creates a new instance of JWTManager with the provided configuration and repository.
+func NewJWTManager(config *JWTConfig, repo RefreshTokenRepository) *JWTManager {
 	return &JWTManager{
-		Config: config,
+		Config:     config,
+		Repository: repo,
 	}
 }
 
@@ -53,8 +63,20 @@ func (m *JWTManager) GenerateToken(userID string) (string, error) {
 // RefreshToken validates an existing refresh token and generates a new pair (Access + Refresh).
 // This implements Refresh Token Rotation, ensuring the session is extended but still
 // bound by the original AbsoluteExpiresAt limit.
-func (m *JWTManager) RefreshToken(tokens TokenPair, userID string) (pair *TokenPair, err error) {
+func (m *JWTManager) RefreshToken(ctx context.Context, tokens TokenPair, userID string) (pair *TokenPair, err error) {
 	refreshToken := tokens.RefreshToken
+
+	// Verify against database
+	if m.Repository != nil {
+		storedToken, err := m.Repository.GetToken(ctx, userID)
+		if err != nil {
+			return nil, fmt.Errorf("refresh token not found or expired: %w", err)
+		}
+		if storedToken != refreshToken {
+			return nil, fmt.Errorf("refresh token mismatch (possible theft/reuse)")
+		}
+	}
+
 	claims, err := m.GetClaims(refreshToken)
 	if err != nil {
 		return nil, err
@@ -77,6 +99,15 @@ func (m *JWTManager) RefreshToken(tokens TokenPair, userID string) (pair *TokenP
 	if err != nil {
 		return nil, err
 	}
+
+	// Update database
+	if m.Repository != nil {
+		expiresAt := time.Now().Add(m.Config.RefreshTokenDuration)
+		if err := m.Repository.UpsertToken(ctx, userID, newRefreshToken, expiresAt); err != nil {
+			return nil, fmt.Errorf("failed to persist refresh token: %w", err)
+		}
+	}
+
 	return &TokenPair{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
@@ -85,10 +116,23 @@ func (m *JWTManager) RefreshToken(tokens TokenPair, userID string) (pair *TokenP
 
 // GenerateRefreshToken creates the initial refresh token for a new session.
 // It calculates the AbsoluteExpiresAt based on the MaxSessionDuration.
-func (m *JWTManager) GenerateRefreshToken(userID string) (string, error) {
+func (m *JWTManager) GenerateRefreshToken(ctx context.Context, userID string) (string, error) {
 	now := time.Now()
 	absExp := now.Add(m.Config.MaxSessionDuration).Unix()
-	return m.GenerateRotatedRefreshToken(userID, absExp)
+	token, err := m.GenerateRotatedRefreshToken(userID, absExp)
+	if err != nil {
+		return "", err
+	}
+
+	// Persist to database
+	if m.Repository != nil {
+		expiresAt := now.Add(m.Config.RefreshTokenDuration)
+		if err := m.Repository.UpsertToken(ctx, userID, token, expiresAt); err != nil {
+			return "", fmt.Errorf("failed to persist initial refresh token: %w", err)
+		}
+	}
+
+	return token, nil
 }
 
 // GenerateRotatedRefreshToken is a helper to create a refresh token with a specific absolute expiration.
@@ -103,6 +147,14 @@ func (m *JWTManager) GenerateRotatedRefreshToken(userID string, absoluteExpiresA
 		},
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(m.Config.SecretKey))
+}
+
+// Logout invalidates a user's session by removing their refresh token from the database.
+func (m *JWTManager) Logout(ctx context.Context, userID string) error {
+	if m.Repository == nil {
+		return nil
+	}
+	return m.Repository.DeleteToken(ctx, userID)
 }
 
 // GetClaims parses and validates a token string and returns the custom JWTClaims.
