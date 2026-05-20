@@ -1,47 +1,60 @@
-# JWT Authentication in Go
-<img width="700" height="700" alt="image" src="https://github.com/user-attachments/assets/5a74df41-47ee-4cb8-94b5-5a6c646bef33" />
+# Go JWT Authentication Service
 
-A minimal JWT authentication implementation in Go using PostgreSQL and `pgx`.
-
-## Overview
-
-This repository provides a simple authentication service with JWT-based sign-up, login, token verification, and token revocation support.
-
-User credentials and session-related data are stored in PostgreSQL using the [`pgx`](https://github.com/jackc/pgx) driver.
+A professional JWT-based authentication service built with Go, Gin, and PostgreSQL. This project implements secure user registration, login, and token management (access & refresh tokens) with modern observability features.
 
 ## Features
 
-- User sign-up and login
-- JWT issuance and verification
-- Token persistence and revocation
-- PostgreSQL integration with `pgx`
-- Minimal HTTP and crypto implementation using Go standard libraries
+- **JWT Authentication**: Secure user registration, login, and logout.
+- **Token Management**: Issuance and revocation of access and refresh tokens.
+- **Structured Logging**: JSON-based logging using Go's modern `log/slog` library.
+- **OpenAPI 3.0**: Comprehensive API documentation available in `openapi.yaml`.
+- **Database Integration**: High-performance PostgreSQL integration using `pgx/v5`.
+- **Environment Configuration**: Flexible configuration via environment variables or `.env` file.
 
 ## Prerequisites
 
-- Go 1.20+
-- PostgreSQL
+- **Go**: 1.25 or higher
+- **PostgreSQL**: 15 or higher
+- **Docker & Docker Compose**: For containerized deployment and observability stack.
 
-## Documentation
+## Getting Started
 
-The project uses standard Go docstrings. You can view the documentation locally using the `go doc` command:
-
+### 1. Clone the repository
 ```bash
-# View all documentation for the Manager package
-go doc -all ./Manager/
-
-# View documentation for the JWTManager
-go doc manager.JWTManager
+git clone <repository-url>
+cd gojwt
 ```
 
-## Configuration
+### 2. Configure Environment Variables
+Create a `.env` file in the root directory (refer to the existing `.env` or the list below):
+- `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `JWT_SECRET`, `ACCESS_TOKEN_DURATION`, `REFRESH_TOKEN_DURATION`
 
-Set the following environment variables before running the application:
-
-```sh
-DATABASE_URL=postgres://user:pass@host:5432/dbname
-JWT_SECRET=your-secret-key
-PORT=8080
+### 3. Run with Docker Compose
+```bash
+docker-compose up -d
 ```
-## NOTE
-This project saves the .env file because of conveience and I am lazy to set it up on my various machines where I code and doesn't contain the sensitive information and is only linked to the docker-compse creds for learning, but be careful to not expose this information if this is opted for any serious or production use.
+This will start the application, the database, and the logging stack.
+
+## API Documentation
+
+The project includes an OpenAPI 3.0 specification. You can find it in the `openapi.yaml` file. You can use tools like Swagger UI or Redoc to visualize and interact with the API.
+
+### Endpoints:
+- `POST /register`: Register a new user.
+- `POST /login`: Authenticate and receive tokens.
+- `POST /refresh`: Refresh an expired access token.
+- `POST /logout`: Revoke tokens and log out.
+- `GET /protected`: Access a JWT-protected resource.
+- `GET /ping`: Health check.
+
+## Project Structure
+
+- `cmd/app/`: Application entry point.
+- `internal/api/`: HTTP handlers, routes, and DTOs.
+- `internal/database/`: Database connection, repositories, and migrations.
+- `internal/manager/`: JWT logic and password hashing.
+- `internal/logger/`: Structured logging configuration and middleware.
+
+## Note on Security
+This project includes a `.env` file for convenience during development/learning with the provided `docker-compose.yml`. **Never** include sensitive credentials in version control for production environments. Always use secure secret management (e.g., HashiCorp Vault, AWS Secrets Manager).
