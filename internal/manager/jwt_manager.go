@@ -26,7 +26,8 @@ type RefreshTokenRepository interface {
 // JWTClaims extends standard JWT registered claims with custom fields like UserID
 // and AbsoluteExpiresAt for session control.
 type JWTClaims struct {
-	UserID string `json:"user_id"`
+	UserID    string `json:"user_id"`
+	TokenType string `json:"token_type"`
 	// AbsoluteExpiresAt is the unix timestamp when the entire session must end.
 	AbsoluteExpiresAt int64 `json:"abs_exp"`
 	jwt.RegisteredClaims
@@ -51,7 +52,8 @@ func (m *JWTManager) GenerateToken(userID string) (string, error) {
 	// Implement token generation logic here using m.Config.SecretKey
 	now := time.Now()
 	claims := &JWTClaims{
-		UserID: userID,
+		UserID:    userID,
+		TokenType: "AccessToken",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(m.Config.AccessTokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -140,6 +142,7 @@ func (m *JWTManager) GenerateRotatedRefreshToken(userID string, absoluteExpiresA
 	now := time.Now()
 	claims := &JWTClaims{
 		UserID:            userID,
+		TokenType:         "RefreshToken",
 		AbsoluteExpiresAt: absoluteExpiresAt,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(m.Config.RefreshTokenDuration)),
@@ -184,6 +187,10 @@ func (m *JWTManager) ValidateRefreshToken(token string, userID string) (bool, er
 		return false, fmt.Errorf("invalid user id")
 	}
 
+	if claims.TokenType != "RefreshToken" {
+		return false, fmt.Errorf("invalid token type")
+	}
+
 	if time.Now().Unix() > claims.AbsoluteExpiresAt {
 		return false, fmt.Errorf("session expired (absolute limit reached)")
 	}
@@ -203,6 +210,9 @@ func (m *JWTManager) ValidateAccessToken(token string) (*JWTClaims, error) {
 	}
 
 	claims, ok := parsedToken.Claims.(*JWTClaims)
+	if claims.TokenType != "AccessToken" {
+		return nil, fmt.Errorf("invalid token type")
+	}
 	if !ok {
 		return nil, fmt.Errorf("invalid claims")
 	}
